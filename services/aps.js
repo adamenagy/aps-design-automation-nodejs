@@ -261,12 +261,6 @@ async function createAppBundle(appBundleSpecs) {
     const qualifiedAppBundleId = `${Utils.NickName}.${appBundleName}+${Utils.Alias}`;
     if (!appBundles.data.includes(qualifiedAppBundleId)) {
         // create an appbundle (version 1)
-        // const appBundleSpec = {
-        //         package: appBundleName,
-        //         engine: engineName,
-        //         id: appBundleName,
-        //         description: `Description for ${appBundleName}`
-        //     };
         const appBundleSpec = dav3.AppBundle.constructFromObject({
             package: appBundleName,
             engine: engineName,
@@ -287,7 +281,7 @@ async function createAppBundle(appBundleSpecs) {
             version: 1,
         };
         try {
-            const newAlias = await api.createAppBundleAlias(
+            await api.createAppBundleAlias(
                 appBundleName,
                 aliasSpec
             );
@@ -298,12 +292,10 @@ async function createAppBundle(appBundleSpecs) {
         }
     } else {
         // create new version
-        const appBundleSpec =
-            //dav3.AppBundle.constructFromObject({
-            {
-                engine: engineName,
-                description: appBundleName,
-            };
+        const appBundleSpec = {
+			engine: engineName,
+			description: appBundleName,
+		};
         try {
             newAppVersion = await api.createAppBundleVersion(
                 appBundleName,
@@ -316,13 +308,11 @@ async function createAppBundle(appBundleSpecs) {
         }
 
         // update alias pointing to v+1
-        const aliasSpec =
-            //dav3.AliasPatch.constructFromObject({
-            {
-                version: newAppVersion.version,
-            };
+        const aliasSpec = {
+			version: newAppVersion.version,
+		};
         try {
-            const newAlias = await api.modifyAppBundleAlias(
+            await api.modifyAppBundleAlias(
                 appBundleName,
                 Utils.Alias,
                 aliasSpec
@@ -429,7 +419,7 @@ async function createActivity(activitySpecs) {
             },
         };
         try {
-            const newActivity = await api.createActivity(activitySpec);
+            await api.createActivity(activitySpec);
         } catch (err) {
             console.error(err);
             throw "Failed to create new Activity";
@@ -440,7 +430,7 @@ async function createActivity(activitySpecs) {
             version: 1,
         };
         try {
-            const newAlias = await api.createActivityAlias(
+            await api.createActivityAlias(
                 activityName,
                 aliasSpec
             );
@@ -473,7 +463,7 @@ class Utils {
             );
             let fetchRefresh = async (data) => {
                 // data is undefined in a fetch, but contains the old credentials in a refresh
-                let credentials = getInternalToken();
+                let credentials = await getInternalToken();
                 // The line below is for testing
                 //credentials.expires_in = 30; credentials.expires_at = new Date(Date.now() + credentials.expires_in * 1000);
                 return credentials;
@@ -634,7 +624,6 @@ class Utils {
             let uploadResponse = await new APS.ObjectsApi().uploadResources(
                 bucketKey,
                 [
-                    //object
                     {
                         objectKey: objectKey,
                         data: contentStream,
