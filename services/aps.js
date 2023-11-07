@@ -155,19 +155,12 @@ service.startWorkItem = async (input, file) => {
     };
 
     // prepare & submit workitem
-    // the callback contains the connectionId (used to identify the client) and the outputFileName of this workitem
-    //const callbackUrl = `${config.credentials.webhook_url}/api/aps/callback/designautomation?outputFileName=${outputFileNameOSS}&inputFileName=${inputFileNameOSS}`;
     const workItemSpec = {
         activityId: activityName,
         arguments: {
             inputFile: inputFileArgument,
             inputJson: inputJsonArgument,
-            outputFile: outputFileArgument,
-            /*
-            onComplete: {
-                verb: dav3.Verb.post,
-                url: callbackUrl
-            }*/
+            outputFile: outputFileArgument
         },
     };
     let workItemStatus = null;
