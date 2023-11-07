@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="icon" type="image/x-icon" href="https://cdn.autodesk.io/favicon.ico">
+    <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.css">
+    <link rel="stylesheet" href="/main.css">
+    <title>Autodesk Platform Services: Simple Viewer</title>
+</head>
+
+<body>
+    <div id="header">
+        <img class="logo" src="https://cdn.autodesk.io/logo/black/stacked.png" alt="Autodesk Platform Services">
+        <span class="title">Design Automation</span>
+        <button id="configure">Configure</button>
+    </div>
+    <main>
+      <div id="leftPanel">
+        <label for="width">Width:</label>
+        <br />
+        <input type="number" id="width" placeholder="Enter new width value">
+        <br /><br />
+        <label for="height">Height:</label>
+        <br />
+        <input type="number" id="height" placeholder="Enter new height value">
+        <br /><br />
+        <label for="inputFile">Input file</label>
+        <br />
+        <input type="file" id="inputFile">
+        <br /><br />
+        <label for="activities">Existing activities</label>
+        <br />
+        <select id="activities"></select>
+        <br /><br />
+        <center><button class="btn btn-primary" id="startWorkItem">Start workitem</button></center>
+      </div>
+      <div id="rightPanel">
+        <pre id="outputlog"></pre>
+      </div>
+    </main>
+    <dialog id="configureDialog">
+      <form method="dialog">
+        <h1>Create/Update AppBundle & Activity</h1>
+    
+        <center>You just need to define AppBundle &amp; Activity once.<br />If the plugin code changed,
+          redefine (creates a new version).<br />&nbsp;
+        </center>
+        
+        <label for="localBundles">Select a local AppBundle:</label>
+        <select id="localBundles"> </select>
+        <p><label><b>Tip:</b> Make sure .ZIP bundles are placed at <b>/bundles/</b> folder</label></p>
+        <label for="engines">Select engine:</label>
+        <select id="engines"> </select>
+
+        <center><br />For this sample the .ZIP name is used as suffix to define <b>AppBundle</b> and <b>Activity</b>
+          names. <br />Activities will have file and params input, and file output.<br />&nbsp;
+        </center>
+
+     
+        <button id="clearAccount" autofocus>Clear account</button>
+        <button id="createUpdate" autofocus>Create/Update</button>
+      </form>
+    </dialog>
+    <script src="/main.js" type="module"></script>
+</body>
+
+</html>
