@@ -1,18 +1,18 @@
 {
-	"name": "aps-design-automation-nodejs",
-	"version": "1.0.0",
-	"description": "Autodesk Platform Services application built by following the Design Automation tutorial from https://aps.autodesk.com/tutorials.",
-	"scripts": {
-		"start": "node server.js"
-	},
-	"keywords": [
-		"autodesk-platform-services"
-	],
-	"license": "MIT",
-	"dependencies": {
-		"autodesk.forge.designautomation": "^3.0.5",
-		"express": "^4.17.1",
-		"forge-apis": "^0.9.7",
-		"multer": "^1.4.5-lts.1"
-	}
+    "name": "aps-design-automation-nodejs",
+    "version": "1.0.0",
+    "description": "Autodesk Platform Services application built by following the Design Automation tutorial from https://aps.autodesk.com/tutorials.",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "keywords": [
+        "autodesk-platform-services"
+    ],
+    "license": "MIT",
+    "dependencies": {
+        "autodesk.forge.designautomation": "^3.0.5",
+        "express": "^4.17.1",
+        "forge-apis": "^0.9.7",
+        "multer": "^1.4.5-lts.1"
+    }
 }

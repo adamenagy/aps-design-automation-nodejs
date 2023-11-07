@@ -1,96 +1,96 @@
 body,
 html {
-	margin: 0;
-	padding: 0;
-	height: 100vh;
-	font-family: ArtifaktElement;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    font-family: ArtifaktElement;
 }
 
 #header {
-	position: absolute;
-	width: 100%;
-	height: 3em;
-	display: flex;
-	flex-flow: row nowrap;
-	justify-content: space-between;
-	align-items: center;
+    position: absolute;
+    width: 100%;
+    height: 3em;
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+    align-items: center;
 }
 
 #header > * {
-	height: 2em;
-	margin: 0 1em;
-	font-size: 1em;
-	font-family: ArtifaktElement;
+    height: 2em;
+    margin: 0 1em;
+    font-size: 1em;
+    font-family: ArtifaktElement;
 }
 
 #header .title {
-	flex: 1 0 auto;
-	height: auto;
+    flex: 1 0 auto;
+    height: auto;
 }
 
 main {
-	position: absolute;
-	top: 3em;
-	left: 0;
-	width: 100%;
-	height: calc(100% - 3em);
+    position: absolute;
+    top: 3em;
+    left: 0;
+    width: 100%;
+    height: calc(100% - 3em);
 }
 
 #leftPanel {
-	position: relative;
-	float: left;
-	width: 30%;
-	height: 100%;
-	padding: 1em;
-	box-sizing: border-box;
+    position: relative;
+    float: left;
+    width: 30%;
+    height: 100%;
+    padding: 1em;
+    box-sizing: border-box;
 }
 
 #rightPanel {
-	position: relative;
-	float: right;
-	width: 70%;
-	height: 100%;
-	padding: 1em;
-	box-sizing: border-box;
+    position: relative;
+    float: right;
+    width: 70%;
+    height: 100%;
+    padding: 1em;
+    box-sizing: border-box;
 }
 
 pre {
-	height: 100%;
-	margin: 0;
-	background-color: lightgray;
-	padding: 1em;
-	box-sizing: border-box;
-	border-width: 1px;
-	border-radius: 0.3em;
-	overflow: scroll;
+    height: 100%;
+    margin: 0;
+    background-color: lightgray;
+    padding: 1em;
+    box-sizing: border-box;
+    border-width: 1px;
+    border-radius: 0.3em;
+    overflow: scroll;
 }
 
 select,
 input,
 label {
-	width: 100%;
-	box-sizing: border-box;
-	position: relative;
-	height: 2em;
-	border-width: 1px;
-	border-radius: 0.3em;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+    height: 2em;
+    border-width: 1px;
+    border-radius: 0.3em;
 }
 
 button,
 select {
-	height: 2em;
-	border-width: 1px;
-	border-radius: 0.3em;
-	cursor: pointer;
+    height: 2em;
+    border-width: 1px;
+    border-radius: 0.3em;
+    cursor: pointer;
 }
 
 dialog {
-	max-width: 500px;
-	border-width: 1px;
-	border-radius: 0.3em;
+    max-width: 500px;
+    border-width: 1px;
+    border-radius: 0.3em;
 }
 
 h1 {
-	font-size: 1.5em;
-	margin: 1em;
+    font-size: 1.5em;
+    margin: 1em;
 }
