@@ -13,7 +13,7 @@
 
 ## Description
 
-Webapp interface that uses Design Automation to update the `width` and `height` param of DWG Dynamic Block (using AutoCAD), RVT Window Family instance (using Revit), IPT Part parameters (using Inventor) and 3DS ... (using 3dsMax). Also includes a `Clear Account` (remove all AppBundles and Activities) and `Define new Activity` based on the sample code.
+Webapp interface that uses Design Automation to update the `width` and `height` param of DWG Dynamic Block (using AutoCAD), RVT Window Family instance (using Revit), IPT Part parameters (using Inventor) and 3DS ... (using 3dsMax). Also includes a `Clear account` (remove all AppBundles and Activities) and `Create/Update` (create new AppBundle and Activity) button in the `Configure` dialog.
 
 See other projects for bundles.
 
@@ -25,14 +25,6 @@ https://user-images.githubusercontent.com/6602398/204223085-41b11c3d-0d4b-4ae2-a
 
 To use this sample, you will need Autodesk developer credentials. Visit the [APS Developer Portal](https://developer.autodesk.com), sign up for an account, then [create an app](https://developer.autodesk.com/myapps/create). For this new app, use `http://localhost:8080/api/aps/callback/oauth` as the Callback URL, although it is not used on a 2-legged flow. Finally, take note of the **Client ID** and **Client Secret**.
 
-**ngrok**
-
-When a `Workitem` completes, **Design Automation** can notify our application. As the app is running locally (i.e. `localhost`), it's not reacheable from the internet. `ngrok` tool creates a temporary address that channels notifications to our `localhost` address.
-
-After [download ngrok](https://ngrok.com/), run `ngrok http 3000 -host-header="localhost:3000"`, then copy the `http` address into the `APS_WEBHOOK_URL` environment variable (see next). For this sample, do not use the `https` address.
-
-![](media/ngrok_setup.png)
-
 ## Running locally
 
 Install [NodeJS](https://nodejs.org).
@@ -41,14 +33,13 @@ Clone this project or download it. It's recommended to install [GitHub Desktop](
 
     git clone https://github.com/autodesk-platform-services/aps-design-automation-nodejs.git
 
-To run it, install the required packages, set the enviroment variables with your client ID, Secret and ngrok url and finally start it. Via command line, navigate to the folder where this repository was cloned to and use the following commands:
+To run it, install the required packages, set the enviroment variables with your Client ID and Secret, and finally start it. Via command line, navigate to the folder where this repository was cloned to and use the following commands:
 
 Mac OSX/Linux (Terminal)
 
     npm install
     export APS_CLIENT_ID=<<YOUR CLIENT ID FROM DEVELOPER PORTAL>>
     export APS_CLIENT_SECRET=<<YOUR CLIENT SECRET>>
-    export APS_WEBHOOK_URL=<<YOUR NGROK URL>>
     npm start
 
 Windows (use **Node.js command line** from the Start menu)
@@ -56,7 +47,6 @@ Windows (use **Node.js command line** from the Start menu)
     npm install
     set APS_CLIENT_ID=<<YOUR CLIENT ID FROM DEVELOPER PORTAL>>
     set APS_CLIENT_SECRET=<<YOUR CLIENT SECRET>>
-    set APS_WEBHOOK_URL=<<YOUR NGROK URL>>
     npm start
 
 Open the browser: [http://localhost:8080](http://localhost:8080).
@@ -95,8 +85,7 @@ Here is the launch configuration generated for Node.js debugging
             "program": "${workspaceFolder}/start.js",
             "env": {
                 "APS_CLIENT_ID": "your clientid here",
-                "APS_CLIENT_SECRET": "your client secret here",
-                "APS_WEBHOOK_URL": "your ngrok url here"
+                "APS_CLIENT_SECRET": "your client secret here"
             }
         }
     ]
