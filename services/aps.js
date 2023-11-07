@@ -1,14 +1,14 @@
 const APS = require("forge-apis");
-const dav3 = require("autodesk.forge.designautomation");
+const DA = require("autodesk.forge.designautomation");
 const {
     APS_CLIENT_ID,
     APS_CLIENT_SECRET,
     DA_CLIENT_CONFIG,
 } = require("../config.js");
 
-const _path = require("path");
-const _fs = require("fs");
-const _url = require("url");
+const path = require("path");
+const fs = require("fs");
+const url = require("url");
 
 const formdata = require("form-data");
 const http = require("https");
@@ -33,7 +33,7 @@ service.getEngines = async () => {
     let allEngines = [];
     let paginationToken = null;
     try {
-        const api = await Utils.dav3API();
+        const api = await Utils.getAPI();
         while (true) {
             let engines = await api.getEngines(
                 paginationToken ? { page: paginationToken } : {}
@@ -51,12 +51,12 @@ service.getEngines = async () => {
 
 service.getLocalAppBundles = async () => {
     let bundles = await Utils.findFiles(Utils.LocalBundlesFolder, ".zip");
-    bundles = bundles.map((fn) => _path.basename(fn, ".zip"));
+    bundles = bundles.map((fn) => path.basename(fn, ".zip"));
     return bundles;
 };
 
 service.getActivities = async () => {
-    const api = await Utils.dav3API();
+    const api = await Utils.getAPI();
     // filter list of
     let activities = null;
     try {
@@ -88,7 +88,7 @@ service.setup = async (info) => {
 };
 
 service.deleteAccount = async () => {
-    let api = await Utils.dav3API();
+    let api = await Utils.getAPI();
     // clear account
     await api.deleteForgeApp("me");
 };
@@ -99,10 +99,6 @@ service.startWorkItem = async (input, file) => {
     const widthParam = parseFloat(workItemData.width);
     const heigthParam = parseFloat(workItemData.height);
     const activityName = `${Utils.NickName}.${workItemData.activityName}`;
-
-    // save the file on the server
-    //const ContentRootPath = _path.resolve(_path.join(__dirname, '../..'));
-    //const fileSavePath = _path.join(ContentRootPath, _path.basename(req.file.originalname));
 
     // upload file to OSS Bucket
     // 1. ensure bucket existis
@@ -124,7 +120,7 @@ service.startWorkItem = async (input, file) => {
     const inputFileNameOSS = `${new Date()
         .toISOString()
         .replace(/[-T:\.Z]/gm, "")
-        .substring(0, 14)}_input_${_path.basename(file.originalname)}`; // avoid overriding
+        .substring(0, 14)}_input_${path.basename(file.originalname)}`; // avoid overriding
     // prepare workitem arguments
     const token = await getInternalToken();
     const bearerToken = ["Bearer", token.access_token].join(" ");
@@ -147,10 +143,10 @@ service.startWorkItem = async (input, file) => {
     const outputFileNameOSS = `${new Date()
         .toISOString()
         .replace(/[-T:\.Z]/gm, "")
-        .substring(0, 14)}_output_${_path.basename(file.originalname)}`; // avoid overriding
+        .substring(0, 14)}_output_${path.basename(file.originalname)}`; // avoid overriding
     const outputFileArgument = {
         url: await Utils.getObjectId(bucketKey, outputFileNameOSS, file),
-        verb: dav3.Verb.put,
+        verb: DA.Verb.put,
         headers: { Authorization: bearerToken },
     };
 
@@ -165,7 +161,7 @@ service.startWorkItem = async (input, file) => {
     };
     let workItemStatus = null;
     try {
-        const api = await Utils.dav3API();
+        const api = await Utils.getAPI();
         workItemStatus = await api.createWorkItem(workItemSpec);
     } catch (err) {
         console.error(err);
@@ -178,7 +174,7 @@ service.startWorkItem = async (input, file) => {
 };
 
 service.getWorkItem = async (id) => {
-    const api = await Utils.dav3API();
+    const api = await Utils.getAPI();
 
     try {
         const job = await api.getWorkitemStatus(id);
@@ -221,7 +217,7 @@ async function getInternalToken() {
 
 async function getAppBundles() {
     // get defined app bundles
-    const api = await Utils.dav3API();
+    const api = await Utils.getAPI();
     try {
         const appBundles = await api.getAppBundles();
         return appBundles;
@@ -240,21 +236,21 @@ async function createAppBundle(appBundleSpecs) {
     const appBundleName = zipFileName + "AppBundle";
 
     // check if ZIP with bundle is here
-    const packageZipPath = _path.join(
+    const packageZipPath = path.join(
         Utils.LocalBundlesFolder,
         zipFileName + ".zip"
     );
 
     const appBundles = await getAppBundles();
 
-    const api = await Utils.dav3API();
+    const api = await Utils.getAPI();
 
     // check if app bundle is already define
     let newAppVersion = null;
     const qualifiedAppBundleId = `${Utils.NickName}.${appBundleName}+${Utils.Alias}`;
     if (!appBundles.data.includes(qualifiedAppBundleId)) {
         // create an appbundle (version 1)
-        const appBundleSpec = dav3.AppBundle.constructFromObject({
+        const appBundleSpec = DA.AppBundle.constructFromObject({
             package: appBundleName,
             engine: engineName,
             id: appBundleName,
@@ -357,7 +353,7 @@ async function createActivity(activitySpecs) {
     const activityName = zipFileName + "Activity";
 
     // get defined activities
-    const api = await Utils.dav3API();
+    const api = await Utils.getAPI();
     let activities = null;
     try {
         activities = await api.getActivities();
@@ -369,7 +365,7 @@ async function createActivity(activitySpecs) {
     if (!activities.data.includes(qualifiedActivityId)) {
         // define the activity
         // ToDo: parametrize for different engines...
-        const engineAttributes = Utils.EngineAttributes(engineName);
+        const engineAttributes = Utils.getEngineAttributes(engineName);
         const commandLine = engineAttributes.commandLine.replace(
             "{0}",
             appBundleName
@@ -385,7 +381,7 @@ async function createActivity(activitySpecs) {
                     localName: "$(inputFile)",
                     ondemand: false,
                     required: true,
-                    verb: dav3.Verb.get,
+                    verb: DA.Verb.get,
                     zip: false,
                 },
                 inputJson: {
@@ -393,7 +389,7 @@ async function createActivity(activitySpecs) {
                     localName: "params.json",
                     ondemand: false,
                     required: false,
-                    verb: dav3.Verb.get,
+                    verb: DA.Verb.get,
                     zip: false,
                 },
                 outputFile: {
@@ -401,7 +397,7 @@ async function createActivity(activitySpecs) {
                     localName: "outputFile." + engineAttributes.extension,
                     ondemand: false,
                     required: true,
-                    verb: dav3.Verb.put,
+                    verb: DA.Verb.put,
                     zip: false,
                 },
             },
@@ -445,13 +441,13 @@ async function createActivity(activitySpecs) {
 }
 
 // Static instance of the DA API
-let dav3Instance = null;
+let daInstance = null;
 
 class Utils {
-    static async Instance() {
-        if (dav3Instance === null) {
+    static get Instance() {
+        if (daInstance === null) {
             // Here it is ok to not await since we awaited in the call router.use()
-            dav3Instance = new dav3.AutodeskForgeDesignAutomationClient(
+            daInstance = new DA.AutodeskForgeDesignAutomationClient(
                 DA_CLIENT_CONFIG
             );
             let fetchRefresh = async (data) => {
@@ -461,19 +457,19 @@ class Utils {
                 //credentials.expires_in = 30; credentials.expires_at = new Date(Date.now() + credentials.expires_in * 1000);
                 return credentials;
             };
-            dav3Instance.authManager.authentications["2-legged"].fetchToken =
+            daInstance.authManager.authentications["2-legged"].fetchToken =
                 fetchRefresh;
-            dav3Instance.authManager.authentications["2-legged"].refreshToken =
+            daInstance.authManager.authentications["2-legged"].refreshToken =
                 fetchRefresh;
         }
-        return dav3Instance;
+        return daInstance;
     }
 
     /// <summary>
     /// Returns the directory where bindles are stored on the local machine.
     /// </summary>
     static get LocalBundlesFolder() {
-        return _path.resolve(_path.join(__dirname, "../", "bundles"));
+        return path.resolve(path.join(__dirname, "../", "bundles"));
     }
 
     /// <summary>
@@ -495,11 +491,11 @@ class Utils {
     /// </summary>
     static async findFiles(dir, filter) {
         return new Promise((resolve, reject) => {
-            _fs.readdir(dir, (err, files) => {
+            fs.readdir(dir, (err, files) => {
                 if (err) return reject(err);
 
                 files = files.filter((file) => {
-                    return _path.extname(file) === filter;
+                    return path.extname(file) === filter;
                 });
 
                 resolve(files);
@@ -508,23 +504,23 @@ class Utils {
     }
 
     /// <summary>
-    /// Create a new DAv3 client/API with default settings
+    /// Create a new DA client/API with default settings
     /// </summary>
-    static async dav3API() {
+    static async getAPI() {
         // There is 2 alternatives to setup an API instance, providing the access_token directly
-        // let apiClient2 = new dav3.AutodeskForgeDesignAutomationClient(/*config.client*/);
+        // let apiClient2 = new DA.AutodeskForgeDesignAutomationClient(/*config.client*/);
         // apiClient2.authManager.authentications['2-legged'].accessToken = oauth2.access_token;
-        //return (new dav3.AutodeskForgeDesignAutomationApi(apiClient));
+        //return (new DA.AutodeskForgeDesignAutomationApi(apiClient));
 
         // Or use the Auto-Refresh feature
-        let apiClient = await Utils.Instance();
-        return new dav3.AutodeskForgeDesignAutomationApi(apiClient);
+        let apiClient = await Utils.Instance;
+        return new DA.AutodeskForgeDesignAutomationApi(apiClient);
     }
 
     /// <summary>
     /// Helps identify the engine
     /// </summary>
-    static EngineAttributes(engine) {
+    static getEngineAttributes(engine) {
         if (engine.includes("3dsMax"))
             return {
                 commandLine:
@@ -557,7 +553,7 @@ class Utils {
         throw new Error("Invalid engine");
     }
 
-    static FormDataLength(form) {
+    static getFormDataLength(form) {
         return new Promise((fulfill, reject) => {
             form.getLength((err, length) => {
                 if (err) return reject(err);
@@ -571,7 +567,7 @@ class Utils {
     /// </summary>
     static uploadFormDataWithFile(filepath, endpoint, params = null) {
         return new Promise(async (resolve, reject) => {
-            const fileStream = _fs.createReadStream(filepath);
+            const fileStream = fs.createReadStream(filepath);
 
             const form = new formdata();
             if (params) {
@@ -583,9 +579,9 @@ class Utils {
 
             let headers = form.getHeaders();
             headers["Cache-Control"] = "no-cache";
-            headers["Content-Length"] = await Utils.FormDataLength(form);
+            headers["Content-Length"] = await Utils.getFormDataLength(form);
 
-            const urlinfo = _url.parse(endpoint);
+            const urlinfo = url.parse(endpoint);
             const postReq = http.request(
                 {
                     host: urlinfo.host,
@@ -610,7 +606,7 @@ class Utils {
 
     static async getObjectId(bucketKey, objectKey, file) {
         try {
-            let contentStream = _fs.createReadStream(file.path);
+            let contentStream = fs.createReadStream(file.path);
 
             //uploadResources takes an Object or Object array of resource to uplaod with their parameters,
             //we are just passing only one object.
