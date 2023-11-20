@@ -16,7 +16,16 @@ router.post(
     }).single("inputFile"),
     async function (req, res, next) {
         try {
-            const workItem = await startWorkItem(req.body, req.file);
+            const workItemData = JSON.parse(req.body.data);
+            const widthParam = parseFloat(workItemData.width);
+            const heigthParam = parseFloat(workItemData.height);
+            const activityName = workItemData.activityName;
+            const workItem = await startWorkItem(
+                activityName,
+                widthParam,
+                heigthParam,
+                req.file
+            );
             res.json(workItem);
         } catch (err) {
             res.statusMessage = err;

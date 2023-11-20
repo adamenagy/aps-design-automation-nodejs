@@ -78,9 +78,9 @@ service.getActivities = async () => {
     return definedActivities;
 };
 
-service.setup = async (info) => {
-    const appBundle = await createAppBundle(info);
-    const activity = await createActivity(info);
+service.setup = async (engineName, zipFileName) => {
+    const appBundle = await createAppBundle(engineName, zipFileName);
+    const activity = await createActivity(engineName, zipFileName);
     return {
         ...appBundle,
         ...activity,
@@ -93,13 +93,8 @@ service.deleteAccount = async () => {
     await api.deleteForgeApp("me");
 };
 
-service.startWorkItem = async (input, file) => {
-    // basic input validation
-    const workItemData = JSON.parse(input.data);
-    const widthParam = parseFloat(workItemData.width);
-    const heigthParam = parseFloat(workItemData.height);
-    const activityName = `${Utils.NickName}.${workItemData.activityName}`;
-
+service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
+	const qualifiedActivityId = `${Utils.NickName}.${activityName}`;
     // upload file to OSS Bucket
     // 1. ensure bucket existis
     const bucketKey = Utils.NickName.toLowerCase() + "-designautomation";
@@ -152,11 +147,11 @@ service.startWorkItem = async (input, file) => {
 
     // prepare & submit workitem
     const workItemSpec = {
-        activityId: activityName,
+        activityId: qualifiedActivityId,
         arguments: {
             inputFile: inputFileArgument,
             inputJson: inputJsonArgument,
-            outputFile: outputFileArgument
+            outputFile: outputFileArgument,
         },
     };
     let workItemStatus = null;
@@ -204,7 +199,7 @@ service.getDownloadUrl = async (fileName) => {
         };
     } catch (err) {
         console.error(err);
-        next(err);
+        throw err;
     }
 };
 
@@ -227,11 +222,7 @@ async function getAppBundles() {
     }
 }
 
-async function createAppBundle(appBundleSpecs) {
-    // basic input validation
-    const zipFileName = appBundleSpecs.zipFileName;
-    const engineName = appBundleSpecs.engine;
-
+async function createAppBundle(engineName, zipFileName) {
     // standard name for this sample
     const appBundleName = zipFileName + "AppBundle";
 
@@ -270,10 +261,7 @@ async function createAppBundle(appBundleSpecs) {
             version: 1,
         };
         try {
-            await api.createAppBundleAlias(
-                appBundleName,
-                aliasSpec
-            );
+            await api.createAppBundleAlias(appBundleName, aliasSpec);
         } catch (err) {
             console.error(err.toString());
             const error = err?.response?.error?.text;
@@ -282,9 +270,9 @@ async function createAppBundle(appBundleSpecs) {
     } else {
         // create new version
         const appBundleSpec = {
-			engine: engineName,
-			description: appBundleName,
-		};
+            engine: engineName,
+            description: appBundleName,
+        };
         try {
             newAppVersion = await api.createAppBundleVersion(
                 appBundleName,
@@ -298,8 +286,8 @@ async function createAppBundle(appBundleSpecs) {
 
         // update alias pointing to v+1
         const aliasSpec = {
-			version: newAppVersion.version,
-		};
+            version: newAppVersion.version,
+        };
         try {
             await api.modifyAppBundleAlias(
                 appBundleName,
@@ -343,11 +331,7 @@ async function createAppBundle(appBundleSpecs) {
     };
 }
 
-async function createActivity(activitySpecs) {
-    // basic input validation
-    const zipFileName = activitySpecs.zipFileName;
-    const engineName = activitySpecs.engine;
-
+async function createActivity(engineName, zipFileName) {
     // standard name for this sample
     const appBundleName = zipFileName + "AppBundle";
     const activityName = zipFileName + "Activity";
@@ -419,10 +403,7 @@ async function createActivity(activitySpecs) {
             version: 1,
         };
         try {
-            await api.createActivityAlias(
-                activityName,
-                aliasSpec
-            );
+            await api.createActivityAlias(activityName, aliasSpec);
         } catch (err) {
             console.error(err);
             throw "Failed to create new Alias for Activity";

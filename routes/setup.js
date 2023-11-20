@@ -44,7 +44,9 @@ router.get("/api/activities", async function (req, res, next) {
 
 router.post("/api/setup", async function (req, res, next) {
     try {
-        const response = await setup(req.body);
+        const zipFileName = req.body.zipFileName;
+        const engineName = req.body.engine;
+        const response = await setup(engineName, zipFileName);
         res.json(response);
     } catch (err) {
         res.statusMessage = err;
