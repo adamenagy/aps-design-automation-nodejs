@@ -28,8 +28,7 @@ router.post(
             );
             res.json(workItem);
         } catch (err) {
-            res.statusMessage = err;
-            res.status(500).end();
+            next(err);
         }
     }
 );
@@ -39,8 +38,7 @@ router.get("/api/workitems/:id", async function (req, res, next) {
         const workItem = await getWorkItem(req.params.id);
         res.json(workItem);
     } catch (err) {
-        res.statusMessage = err;
-        res.status(500).end();
+        next(err);
     }
 });
 
@@ -49,8 +47,7 @@ router.get("/api/files/:name/url", async function (req, res, next) {
         const file = await getDownloadUrl(req.params.name);
         res.json(file);
     } catch (err) {
-        res.statusMessage = err;
-        res.status(500).end();
+        next(err);
     }
 });
 

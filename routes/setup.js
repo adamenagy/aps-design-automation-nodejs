@@ -17,8 +17,7 @@ router.get("/api/engines", async function (req, res, next) {
         const engines = await getEngines();
         res.json(engines);
     } catch (err) {
-        res.statusMessage = err;
-        res.status(500).end();
+        next(err);
     }
 });
 
@@ -27,8 +26,7 @@ router.get("/api/appbundles", async function (req, res, next) {
         const appbundles = await getLocalAppBundles();
         res.json(appbundles);
     } catch (err) {
-        res.statusMessage = err;
-        res.status(500).end();
+        next(err);
     }
 });
 
@@ -37,8 +35,7 @@ router.get("/api/activities", async function (req, res, next) {
         const activities = await getActivities();
         res.json(activities);
     } catch (err) {
-        res.statusMessage = err;
-        res.status(500).end();
+        next(err);
     }
 });
 
@@ -49,8 +46,7 @@ router.post("/api/setup", async function (req, res, next) {
         const response = await setup(engineName, zipFileName);
         res.json(response);
     } catch (err) {
-        res.statusMessage = err;
-        res.status(500).end();
+        next(err);
     }
 });
 
@@ -59,8 +55,7 @@ router.delete("/api/account", async function (req, res, next) {
         await deleteAccount();
         res.end();
     } catch (err) {
-        res.statusMessage = err;
-        res.status(500).end();
+        next(err);
     }
 });
 
