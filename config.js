@@ -6,7 +6,8 @@ if (!APS_CLIENT_ID || !APS_CLIENT_SECRET) {
     console.warn("Missing some of the environment variables.");
     process.exit(1);
 }
-APS_BUCKET = APS_BUCKET || `${APS_NICKNAME.toLowerCase()}-basic-app`;
+APS_BUCKET = APS_BUCKET || `${APS_NICKNAME.toLowerCase()}-designautomation`;
+APS_ALIAS = 'dev';
 PORT = PORT || 8080;
 
 APS_DA_CLIENT_CONFIG = {
@@ -28,4 +29,6 @@ module.exports = {
     PORT,
     APS_DA_CLIENT_CONFIG,
     APS_NICKNAME,
+    APS_ALIAS,
+    APS_BUCKET
 };

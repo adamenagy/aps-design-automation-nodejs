@@ -1,11 +1,23 @@
-const APS = require("forge-apis");
 const DA = require("autodesk.forge.designautomation");
+const { SdkManagerBuilder } = require("@aps_sdk/autodesk-sdkmanager");
+const { AuthenticationClient, Scopes } = require("@aps_sdk/authentication");
+const {
+    OssClient,
+    CreateBucketsPayloadPolicyKeyEnum,
+    CreateBucketXAdsRegionEnum,
+} = require("@aps_sdk/oss");
 const {
     APS_CLIENT_ID,
     APS_CLIENT_SECRET,
     APS_DA_CLIENT_CONFIG,
     APS_NICKNAME,
+	APS_ALIAS,
+	APS_BUCKET
 } = require("../config.js");
+
+const sdk = SdkManagerBuilder.create().build();
+const authenticationClient = new AuthenticationClient(sdk);
+const ossClient = new OssClient(sdk);
 
 const path = require("path");
 const fs = require("fs");
@@ -14,21 +26,23 @@ const url = require("url");
 const formdata = require("form-data");
 const http = require("https");
 
-let internalAuthClient = new APS.AuthClientTwoLegged(
-    APS_CLIENT_ID,
-    APS_CLIENT_SECRET,
-    [
-        "bucket:read",
-        "bucket:create",
-        "data:read",
-        "data:write",
-        "data:create",
-        "code:all",
-    ],
-    true
-);
-
 const service = (module.exports = {});
+
+service.getInternalToken = async () => {
+    const credentials = await authenticationClient.getTwoLeggedToken(
+        APS_CLIENT_ID,
+        APS_CLIENT_SECRET,
+        [
+            Scopes.DataRead,
+            Scopes.DataCreate,
+            Scopes.DataWrite,
+            Scopes.BucketCreate,
+            Scopes.BucketRead,
+            Scopes.CodeAll,
+        ]
+    );
+    return credentials;
+};
 
 service.getEngines = async () => {
     let allEngines = [];
@@ -70,10 +84,10 @@ service.getActivities = async () => {
     for (let i = 0; i < activities.data.length; i++) {
         let activity = activities.data[i];
         if (
-            activity.startsWith(Utils.NickName) &&
+            activity.startsWith(APS_NICKNAME) &&
             activity.indexOf("$LATEST") === -1
         )
-            definedActivities.push(activity.replace(Utils.NickName + ".", ""));
+            definedActivities.push(activity.replace(APS_NICKNAME + ".", ""));
     }
 
     return definedActivities;
@@ -94,35 +108,42 @@ service.deleteAccount = async () => {
     await api.deleteForgeApp("me");
 };
 
-service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
-    const qualifiedActivityId = `${Utils.NickName}.${activityName}`;
-    // upload file to OSS Bucket
-    // 1. ensure bucket existis
-    const bucketKey = Utils.NickName.toLowerCase() + "-designautomation";
+service.ensureBucketExists = async (bucketKey) => {
+    const { access_token } = await service.getInternalToken();
     try {
-        let payload = new APS.PostBucketsPayload();
-        payload.bucketKey = bucketKey;
-        payload.policyKey = "transient"; // expires in 24h
-        await new APS.BucketsApi().createBucket(
-            payload,
-            {},
-            null,
-            await getInternalToken()
-        );
+        await ossClient.getBucketDetails(access_token, bucketKey);
     } catch (err) {
-        // in case bucket already exists
+        if (err.axiosError.response.status === 404) {
+            await ossClient.createBucket(
+                access_token,
+                CreateBucketXAdsRegionEnum.Us,
+                {
+                    bucketKey: bucketKey,
+                    policyKey: CreateBucketsPayloadPolicyKeyEnum.Persistent,
+                }
+            );
+        } else {
+            throw err;
+        }
     }
+};
+
+service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
+    const { access_token } = await service.getInternalToken();
+    const qualifiedActivityId = `${APS_NICKNAME}.${activityName}`;
+    // upload file to OSS Bucket
+    // 1. ensure bucket existisqff
+    await service.ensureBucketExists(APS_BUCKET);
     // 2. upload inputFile
     const inputFileNameOSS = `${new Date()
         .toISOString()
         .replace(/[-T:\.Z]/gm, "")
         .substring(0, 14)}_input_${path.basename(file.originalname)}`; // avoid overriding
     // prepare workitem arguments
-    const token = await getInternalToken();
-    const bearerToken = ["Bearer", token.access_token].join(" ");
+    const bearerToken = ["Bearer", access_token].join(" ");
     // 1. input file
     const inputFileArgument = {
-        url: await Utils.getObjectId(bucketKey, inputFileNameOSS, file),
+        url: await Utils.getObjectId(APS_BUCKET, inputFileNameOSS, file),
         headers: { Authorization: bearerToken },
     };
     // 2. input json
@@ -141,7 +162,7 @@ service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
         .replace(/[-T:\.Z]/gm, "")
         .substring(0, 14)}_output_${path.basename(file.originalname)}`; // avoid overriding
     const outputFileArgument = {
-        url: await Utils.getObjectId(bucketKey, outputFileNameOSS, file),
+        url: await Utils.getObjectId(APS_BUCKET, outputFileNameOSS, file),
         verb: DA.Verb.put,
         headers: { Authorization: bearerToken },
     };
@@ -182,34 +203,23 @@ service.getWorkItem = async (id) => {
 };
 
 service.getDownloadUrl = async (fileName) => {
-    const objectsApi = new APS.ObjectsApi();
-    const bucketKey = Utils.NickName.toLowerCase() + "-designautomation";
+    const { access_token } = await service.getInternalToken();
 
     try {
         //create a S3 presigned URL and send to client
-        let response = await objectsApi.getS3DownloadURL(
-            bucketKey,
-            fileName,
-            { useAcceleration: false, minutesExpiration: 15 },
-            null,
-            await getInternalToken()
-        );
+        let response = await ossClient.createSignedResource(access_token, APS_BUCKET, fileName, {
+			access: "read",
+			useCdn: true,
+		});
 
         return {
-            url: response.body.url,
+            url: response.signedUrl,
         };
     } catch (err) {
         console.error(err);
         throw err;
     }
 };
-
-async function getInternalToken() {
-    if (!internalAuthClient.isAuthorized()) {
-        await internalAuthClient.authenticate();
-    }
-    return internalAuthClient.getCredentials();
-}
 
 async function getAppBundles() {
     // get defined app bundles
@@ -239,7 +249,7 @@ async function createAppBundle(engineName, zipFileName) {
 
     // check if app bundle is already define
     let newAppVersion = null;
-    const qualifiedAppBundleId = `${Utils.NickName}.${appBundleName}+${Utils.Alias}`;
+    const qualifiedAppBundleId = `${APS_NICKNAME}.${appBundleName}+${APS_ALIAS}`;
     if (!appBundles.data.includes(qualifiedAppBundleId)) {
         // create an appbundle (version 1)
         const appBundleSpec = DA.AppBundle.constructFromObject({
@@ -258,7 +268,7 @@ async function createAppBundle(engineName, zipFileName) {
 
         // create alias pointing to v1
         const aliasSpec = {
-            id: Utils.Alias,
+            id: APS_ALIAS,
             version: 1,
         };
         try {
@@ -292,7 +302,7 @@ async function createAppBundle(engineName, zipFileName) {
         try {
             await api.modifyAppBundleAlias(
                 appBundleName,
-                Utils.Alias,
+                APS_ALIAS,
                 aliasSpec
             );
         } catch (err) {
@@ -346,7 +356,7 @@ async function createActivity(engineName, zipFileName) {
         console.error(err);
         throw "Failed to get Activity list";
     }
-    const qualifiedActivityId = `${Utils.NickName}.${activityName}+${Utils.Alias}`;
+    const qualifiedActivityId = `${APS_NICKNAME}.${activityName}+${APS_ALIAS}`;
     if (!activities.data.includes(qualifiedActivityId)) {
         // define the activity
         // ToDo: parametrize for different engines...
@@ -357,7 +367,7 @@ async function createActivity(engineName, zipFileName) {
         );
         const activitySpec = {
             id: activityName,
-            appbundles: [`${Utils.NickName}.${appBundleName}+${Utils.Alias}`],
+            appbundles: [`${APS_NICKNAME}.${appBundleName}+${APS_ALIAS}`],
             commandLine: [commandLine],
             engine: engineName,
             parameters: {
@@ -400,7 +410,7 @@ async function createActivity(engineName, zipFileName) {
         }
         // specify the alias for this Activity
         const aliasSpec = {
-            id: Utils.Alias,
+            id: APS_ALIAS,
             version: 1,
         };
         try {
@@ -434,7 +444,7 @@ class Utils {
             );
             let fetchRefresh = async (data) => {
                 // data is undefined in a fetch, but contains the old credentials in a refresh
-                let credentials = await getInternalToken();
+                let credentials = await service.getInternalToken();
                 // The line below is for testing
                 //credentials.expires_in = 30; credentials.expires_at = new Date(Date.now() + credentials.expires_in * 1000);
                 return credentials;
@@ -452,13 +462,6 @@ class Utils {
     /// </summary>
     static get LocalBundlesFolder() {
         return path.resolve(path.join(__dirname, "../", "bundles"));
-    }
-
-    /// <summary>
-    /// Prefix for AppBundles and Activities
-    /// </summary>
-    static get NickName() {
-        return APS_NICKNAME;
     }
 
     /// <summary>
@@ -588,36 +591,13 @@ class Utils {
 
     static async getObjectId(bucketKey, objectKey, file) {
         try {
-            let contentStream = fs.createReadStream(file.path);
-
+			const { access_token } = await service.getInternalToken();
             //uploadResources takes an Object or Object array of resource to uplaod with their parameters,
             //we are just passing only one object.
-            let uploadResponse = await new APS.ObjectsApi().uploadResources(
-                bucketKey,
-                [
-                    {
-                        objectKey: objectKey,
-                        data: contentStream,
-                        length: file.size,
-                    },
-                ],
-                {
-                    useAcceleration: false, //Whether or not to generate an accelerated signed URL
-                    minutesExpiration: 20, //The custom expiration time within the 1 to 60 minutes range, if not specified, default is 2 minutes
-                    onUploadProgress: (data) => console.warn(data), // function (progressEvent) => {}
-                },
-                null,
-                await getInternalToken()
-            );
+            let uploadResponse = await ossClient.upload(bucketKey, objectKey, file.path, access_token);
             //lets check for the first and only entry.
-            if (
-                uploadResponse[0].hasOwnProperty("error") &&
-                uploadResponse[0].error
-            ) {
-                throw new Error(uploadResponse[0].completed.reason);
-            }
-            console.log(uploadResponse[0].completed.objectId);
-            return uploadResponse[0].completed.objectId;
+            console.log(uploadResponse.objectId);
+            return uploadResponse.objectId;
         } catch (err) {
             console.error("Failed to create ObjectID\n", err);
             throw ex;
