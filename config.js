@@ -2,7 +2,7 @@ require("dotenv").config();
 
 let { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_NICKNAME, APS_BUCKET, PORT } =
     process.env;
-if (!APS_CLIENT_ID || !APS_CLIENT_SECRET) {
+if (!APS_CLIENT_ID || !APS_CLIENT_SECRET || !APS_NICKNAME) {
     console.warn("Missing some of the environment variables.");
     process.exit(1);
 }
