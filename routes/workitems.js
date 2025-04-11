@@ -42,7 +42,7 @@ router.get("/api/workitems/:id", async function (req, res, next) {
     }
 });
 
-router.get("/api/files/:name/url", async function (req, res, next) {
+router.get("/api/workitems/files/:name/url", async function (req, res, next) {
     try {
         const file = await getDownloadUrl(req.params.name);
         res.json(file);

@@ -13,7 +13,7 @@ document.getElementById("clearAccount").onclick = async function (button) {
         return;
 
     try {
-        const response = await fetch("/api/account", { method: "DELETE" });
+        const response = await fetch("/api/setup/account", { method: "DELETE" });
         if (response.ok) {
             writeLog("Account cleared, all app bundles & activities deleted");
             list("activities");
@@ -98,9 +98,9 @@ document.getElementById("startWorkItem").onclick = async function (button) {
 prepareLists();
 
 function prepareLists() {
-    list("activities", "/api/activities");
-    list("engines", "/api/engines");
-    list("localBundles", "/api/appbundles");
+    list("activities", "/api/setup/activities");
+    list("engines", "/api/setup/engines");
+    list("localBundles", "/api/setup/appbundles");
 }
 
 async function list(id, endpoint) {
@@ -167,7 +167,7 @@ function monitorWorkItem(workItemId, fileName) {
 }
 
 async function downloadResult(fileName) {
-    const response = await fetch("/api/files/" + fileName + "/url");
+    const response = await fetch("/api/workitems/files/" + fileName + "/url");
     const json = await response.json();
 
     writeLog('<a href="' + json.url + '">Download result file here</a>');
