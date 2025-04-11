@@ -33,6 +33,7 @@ service.getInternalToken = async () => {
         APS_CLIENT_ID,
         APS_CLIENT_SECRET,
         [
+            Scopes.CodeAll,
             Scopes.DataRead,
             Scopes.DataCreate,
             Scopes.DataWrite,
