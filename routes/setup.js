@@ -12,7 +12,7 @@ let router = express.Router();
 
 router.use(bodyParser.json());
 
-router.get("/api/setup/engines", async function (req, res, next) {
+router.get("/api/setup/engines", async function(req, res, next) {
     try {
         const engines = await getEngines();
         res.json(engines);
@@ -21,7 +21,7 @@ router.get("/api/setup/engines", async function (req, res, next) {
     }
 });
 
-router.get("/api/setup/appbundles", async function (req, res, next) {
+router.get("/api/setup/appbundles", async function(req, res, next) {
     try {
         const appbundles = await getLocalAppBundles();
         res.json(appbundles);
@@ -30,7 +30,7 @@ router.get("/api/setup/appbundles", async function (req, res, next) {
     }
 });
 
-router.get("/api/setup/activities", async function (req, res, next) {
+router.get("/api/setup/activities", async function(req, res, next) {
     try {
         const activities = await getActivities();
         res.json(activities);
@@ -39,7 +39,7 @@ router.get("/api/setup/activities", async function (req, res, next) {
     }
 });
 
-router.post("/api/setup", async function (req, res, next) {
+router.post("/api/setup", async function(req, res, next) {
     try {
         const zipFileName = req.body.zipFileName;
         const engineName = req.body.engine;
@@ -50,7 +50,7 @@ router.post("/api/setup", async function (req, res, next) {
     }
 });
 
-router.delete("/api/setup/account", async function (req, res, next) {
+router.delete("/api/setup/account", async function(req, res, next) {
     try {
         await deleteAccount();
         res.end();

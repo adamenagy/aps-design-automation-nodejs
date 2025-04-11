@@ -11,8 +11,8 @@ const {
     APS_CLIENT_SECRET,
     APS_DA_CLIENT_CONFIG,
     APS_NICKNAME,
-	APS_ALIAS,
-	APS_BUCKET
+    APS_ALIAS,
+    APS_BUCKET
 } = require("../config.js");
 
 const sdk = SdkManagerBuilder.create().build();
@@ -111,15 +111,15 @@ service.deleteAccount = async () => {
 service.ensureBucketExists = async (bucketKey) => {
     const { access_token } = await service.getInternalToken();
     try {
-        await ossClient.getBucketDetails(access_token, bucketKey);
+        await ossClient.getBucketDetails(bucketKey, { accessToken: access_token });
     } catch (err) {
         if (err.axiosError.response.status === 404) {
             await ossClient.createBucket(
-                access_token,
                 CreateBucketXAdsRegionEnum.Us,
                 {
                     bucketKey: bucketKey,
                     policyKey: CreateBucketsPayloadPolicyKeyEnum.Persistent,
+                    accessToken: access_token,
                 }
             );
         } else {
@@ -207,10 +207,11 @@ service.getDownloadUrl = async (fileName) => {
 
     try {
         //create a S3 presigned URL and send to client
-        let response = await ossClient.createSignedResource(access_token, APS_BUCKET, fileName, {
-			access: "read",
-			useCdn: true,
-		});
+        let response = await ossClient.createSignedResource(APS_BUCKET, fileName, {
+            access: "read",
+            useCdn: true,
+            accessToken: access_token,
+        });
 
         return {
             url: response.signedUrl,
@@ -591,16 +592,16 @@ class Utils {
 
     static async getObjectId(bucketKey, objectKey, file) {
         try {
-			const { access_token } = await service.getInternalToken();
+            const { access_token } = await service.getInternalToken();
             //uploadResources takes an Object or Object array of resource to uplaod with their parameters,
             //we are just passing only one object.
-            let uploadResponse = await ossClient.upload(bucketKey, objectKey, file.path, access_token);
+            let uploadResponse = await ossClient.uploadObject(bucketKey, objectKey, file.path, { accessToken: access_token });
             //lets check for the first and only entry.
             console.log(uploadResponse.objectId);
             return uploadResponse.objectId;
         } catch (err) {
             console.error("Failed to create ObjectID\n", err);
-            throw ex;
+            throw err;
         }
     }
 }
