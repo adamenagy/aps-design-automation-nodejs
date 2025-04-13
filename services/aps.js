@@ -119,7 +119,7 @@ service.ensureBucketExists = async (bucketKey) => {
                 CreateBucketXAdsRegionEnum.Us,
                 {
                     bucketKey: bucketKey,
-                    policyKey: CreateBucketsPayloadPolicyKeyEnum.Persistent,
+                    policyKey: CreateBucketsPayloadPolicyKeyEnum.Transient,
                     accessToken: access_token,
                 }
             );
