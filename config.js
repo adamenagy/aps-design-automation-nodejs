@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-let { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_NICKNAME, APS_BUCKET, PORT } =
+let { APS_CLIENT_ID, APS_CLIENT_SECRET, APS_NICKNAME, APS_BUCKET, APS_PAT, PORT } =
     process.env;
 if (!APS_CLIENT_ID || !APS_CLIENT_SECRET) {
     console.warn("Missing some of the environment variables.");
@@ -8,6 +8,7 @@ if (!APS_CLIENT_ID || !APS_CLIENT_SECRET) {
 }
 APS_NICKNAME = APS_NICKNAME || APS_CLIENT_ID;
 APS_BUCKET = APS_BUCKET || `${APS_NICKNAME.toLowerCase()}-designautomation`;
+APS_PAT = APS_PAT || '';
 APS_ALIAS = 'dev';
 PORT = PORT || 8080;
 
@@ -31,5 +32,6 @@ module.exports = {
     APS_DA_CLIENT_CONFIG,
     APS_NICKNAME,
     APS_ALIAS,
-    APS_BUCKET
+    APS_BUCKET,
+    APS_PAT
 };

@@ -12,7 +12,8 @@ const {
     APS_DA_CLIENT_CONFIG,
     APS_NICKNAME,
     APS_ALIAS,
-    APS_BUCKET
+    APS_BUCKET,
+    APS_PAT
 } = require("../config.js");
 
 const sdk = SdkManagerBuilder.create().build();
@@ -175,6 +176,7 @@ service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
             inputFile: inputFileArgument,
             inputJson: inputJsonArgument,
             outputFile: outputFileArgument,
+            PersonalAccessToken: APS_PAT,
         },
     };
     let workItemStatus = null;
@@ -375,7 +377,7 @@ async function createActivity(engineName, zipFileName) {
             parameters: {
                 inputFile: {
                     description: "input file",
-                    localName: "$(inputFile)",
+                    localName: "inputFile." + engineAttributes.extension,
                     ondemand: false,
                     required: true,
                     verb: DA.Verb.get,
@@ -396,6 +398,12 @@ async function createActivity(engineName, zipFileName) {
                     required: true,
                     verb: DA.Verb.put,
                     zip: false,
+                },
+                // Only Fusion needs this
+                PersonalAccessToken: {
+                    verb: DA.Verb.read,
+                    description: "the personal access token to use",
+                    required: true
                 },
             },
             settings: {
@@ -534,6 +542,14 @@ class Utils {
                 commandLine:
                     '$(engine.path)\\revitcoreconsole.exe /i "$(args[inputFile].path)" /al "$(appbundles[{0}].path)"',
                 extension: "rvt",
+                script: "",
+            };
+
+        if (engine.includes("Fusion"))
+            return {
+                commandLine:
+                    '',
+                extension: "f3d",
                 script: "",
             };
 
