@@ -1,24 +1,19 @@
 const DA = require("autodesk.forge.designautomation");
-const { SdkManagerBuilder } = require("@aps_sdk/autodesk-sdkmanager");
-const { AuthenticationClient, Scopes } = require("@aps_sdk/authentication");
+
 const {
-    OssClient,
-    CreateBucketsPayloadPolicyKeyEnum,
-    CreateBucketXAdsRegionEnum,
-} = require("@aps_sdk/oss");
-const {
-    APS_CLIENT_ID,
-    APS_CLIENT_SECRET,
     APS_DA_CLIENT_CONFIG,
     APS_NICKNAME,
     APS_ALIAS,
     APS_BUCKET,
     APS_PAT
 } = require("../config.js");
-
-const sdk = SdkManagerBuilder.create().build();
-const authenticationClient = new AuthenticationClient(sdk);
-const ossClient = new OssClient(sdk);
+const {
+    getInternalToken,
+} = require("./aps.auth.js");
+const {
+    ensureBucketExists,
+    getObjectId,
+} = require("./aps.oss.js");
 
 const path = require("path");
 const fs = require("fs");
@@ -29,28 +24,11 @@ const http = require("https");
 
 const service = (module.exports = {});
 
-service.getInternalToken = async () => {
-    const credentials = await authenticationClient.getTwoLeggedToken(
-        APS_CLIENT_ID,
-        APS_CLIENT_SECRET,
-        [
-            Scopes.CodeAll,
-            Scopes.DataRead,
-            Scopes.DataCreate,
-            Scopes.DataWrite,
-            Scopes.BucketCreate,
-            Scopes.BucketRead,
-            Scopes.CodeAll,
-        ]
-    );
-    return credentials;
-};
-
 service.getEngines = async () => {
     let allEngines = [];
     let paginationToken = null;
     try {
-        const api = await Utils.getAPI();
+        const api = await getDaAPI();
         while (true) {
             let engines = await api.getEngines(
                 paginationToken ? { page: paginationToken } : {}
@@ -67,13 +45,13 @@ service.getEngines = async () => {
 };
 
 service.getLocalAppBundles = async () => {
-    let bundles = await Utils.findFiles(Utils.LocalBundlesFolder, ".zip");
+    let bundles = await findFiles(getLocalBundlesFolder(), ".zip");
     bundles = bundles.map((fn) => path.basename(fn, ".zip"));
     return bundles;
 };
 
 service.getActivities = async () => {
-    const api = await Utils.getAPI();
+    const api = await getDaAPI();
 
     let activities = null;
     try {
@@ -105,37 +83,17 @@ service.setup = async (engineName, zipFileName) => {
 };
 
 service.deleteAccount = async () => {
-    let api = await Utils.getAPI();
+    let api = await getDaAPI();
     // clear account
     await api.deleteForgeApp("me");
 };
 
-service.ensureBucketExists = async (bucketKey) => {
-    const { access_token } = await service.getInternalToken();
-    try {
-        await ossClient.getBucketDetails(bucketKey, { accessToken: access_token });
-    } catch (err) {
-        if (err.axiosError.response.status === 404) {
-            await ossClient.createBucket(
-                CreateBucketXAdsRegionEnum.Us,
-                {
-                    bucketKey: bucketKey,
-                    policyKey: CreateBucketsPayloadPolicyKeyEnum.Transient,
-                    accessToken: access_token,
-                }
-            );
-        } else {
-            throw err;
-        }
-    }
-};
-
 service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
-    const { access_token } = await service.getInternalToken();
+    const { access_token } = await getInternalToken();
     const qualifiedActivityId = `${APS_NICKNAME}.${activityName}`;
     // upload file to OSS Bucket
     // 1. ensure bucket existisqff
-    await service.ensureBucketExists(APS_BUCKET);
+    await ensureBucketExists(APS_BUCKET);
     // 2. upload inputFile
     const inputFileNameOSS = `${new Date()
         .toISOString()
@@ -145,7 +103,7 @@ service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
     const bearerToken = ["Bearer", access_token].join(" ");
     // 1. input file
     const inputFileArgument = {
-        url: await Utils.getObjectId(APS_BUCKET, inputFileNameOSS, file),
+        url: await getObjectId(APS_BUCKET, inputFileNameOSS, file),
         headers: { Authorization: bearerToken },
     };
     // 2. input json
@@ -164,7 +122,7 @@ service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
         .replace(/[-T:\.Z]/gm, "")
         .substring(0, 14)}_output_${path.basename(file.originalname)}`; // avoid overriding
     const outputFileArgument = {
-        url: await Utils.getObjectId(APS_BUCKET, outputFileNameOSS, file),
+        url: await getObjectId(APS_BUCKET, outputFileNameOSS, file),
         verb: DA.Verb.put,
         headers: { Authorization: bearerToken },
     };
@@ -182,7 +140,7 @@ service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
     console.log(JSON.stringify(workItemSpec, null, 2));
     let workItemStatus = null;
     try {
-        const api = await Utils.getAPI();
+        const api = await getDaAPI();
         workItemStatus = await api.createWorkItem(workItemSpec);
     } catch (err) {
         console.error(err);
@@ -195,7 +153,7 @@ service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
 };
 
 service.getWorkItem = async (id) => {
-    const api = await Utils.getAPI();
+    const api = await getDaAPI();
 
     try {
         const job = await api.getWorkitemStatus(id);
@@ -206,29 +164,9 @@ service.getWorkItem = async (id) => {
     }
 };
 
-service.getDownloadUrl = async (fileName) => {
-    const { access_token } = await service.getInternalToken();
-
-    try {
-        //create a S3 presigned URL and send to client
-        let response = await ossClient.createSignedResource(APS_BUCKET, fileName, {
-            access: "read",
-            useCdn: true,
-            accessToken: access_token,
-        });
-
-        return {
-            url: response.signedUrl,
-        };
-    } catch (err) {
-        console.error(err);
-        throw err;
-    }
-};
-
 async function getAppBundles() {
     // get defined app bundles
-    const api = await Utils.getAPI();
+    const api = await getDaAPI();
     try {
         const appBundles = await api.getAppBundles();
         return appBundles;
@@ -244,13 +182,13 @@ async function createAppBundle(engineName, zipFileName) {
 
     // check if ZIP with bundle is here
     const packageZipPath = path.join(
-        Utils.LocalBundlesFolder,
+        getLocalBundlesFolder(),
         zipFileName + ".zip"
     );
 
     const appBundles = await getAppBundles();
 
-    const api = await Utils.getAPI();
+    const api = await getDaAPI();
 
     // check if app bundle is already define
     let newAppVersion = null;
@@ -330,7 +268,7 @@ async function createAppBundle(engineName, zipFileName) {
         // -F file=@E:myfile.zip
         //
         // The ‘file’ field must be at the end, all fields after ‘file’ will be ignored.
-        await Utils.uploadFormDataWithFile(
+        await uploadFormDataWithFile(
             packageZipPath,
             newAppVersion.uploadParameters.endpointURL,
             newAppVersion.uploadParameters.formData
@@ -353,7 +291,7 @@ async function createActivity(engineName, zipFileName) {
     const activityName = zipFileName + "Activity";
 
     // get defined activities
-    const api = await Utils.getAPI();
+    const api = await getDaAPI();
     let activities = null;
     try {
         activities = await api.getActivities();
@@ -365,7 +303,7 @@ async function createActivity(engineName, zipFileName) {
     if (!activities.data.includes(qualifiedActivityId)) {
         // define the activity
         // ToDo: parametrize for different engines...
-        const engineAttributes = Utils.getEngineAttributes(engineName);
+        const engineAttributes = getEngineAttributes(engineName);
         const commandLine = engineAttributes.commandLine.replace(
             "{0}",
             appBundleName
@@ -445,181 +383,148 @@ async function createActivity(engineName, zipFileName) {
 
 // Static instance of the DA API
 let daInstance = null;
+async function getDaAPI() {
+    if (daInstance === null) {
+        // Here it is ok to not await since we awaited in the call router.use()
+        daInstance = new DA.AutodeskForgeDesignAutomationClient(
+            APS_DA_CLIENT_CONFIG
+        );
+        let fetchRefresh = async (data) => {
+            // data is undefined in a fetch, but contains the old credentials in a refresh
+            let credentials = await getInternalToken();
+            // The line below is for testing
+            //credentials.expires_in = 30; credentials.expires_at = new Date(Date.now() + credentials.expires_in * 1000);
+            return credentials;
+        };
+        daInstance.authManager.authentications["2-legged"].fetchToken =
+            fetchRefresh;
+        daInstance.authManager.authentications["2-legged"].refreshToken =
+            fetchRefresh;
+    }
 
-class Utils {
-    static get Instance() {
-        if (daInstance === null) {
-            // Here it is ok to not await since we awaited in the call router.use()
-            daInstance = new DA.AutodeskForgeDesignAutomationClient(
-                APS_DA_CLIENT_CONFIG
-            );
-            let fetchRefresh = async (data) => {
-                // data is undefined in a fetch, but contains the old credentials in a refresh
-                let credentials = await service.getInternalToken();
-                // The line below is for testing
-                //credentials.expires_in = 30; credentials.expires_at = new Date(Date.now() + credentials.expires_in * 1000);
-                return credentials;
-            };
-            daInstance.authManager.authentications["2-legged"].fetchToken =
-                fetchRefresh;
-            daInstance.authManager.authentications["2-legged"].refreshToken =
-                fetchRefresh;
+    // There is 2 alternatives to setup an API instance, providing the access_token directly
+    // let daInstance2 = new DA.AutodeskForgeDesignAutomationClient(/*config.client*/);
+    // daInstance2.authManager.authentications['2-legged'].accessToken = oauth2.access_token;
+    // return (new DA.AutodeskForgeDesignAutomationApi(daInstance2));
+
+    return new DA.AutodeskForgeDesignAutomationApi(daInstance);
+}
+
+/// <summary>
+/// Returns the directory where bindles are stored on the local machine.
+/// </summary>
+function getLocalBundlesFolder() {
+    return path.resolve(path.join(__dirname, "../", "bundles"));
+}
+
+/// <summary>
+/// Search files in a folder and filter them.
+/// </summary>
+function findFiles(dir, filter) {
+    return new Promise((resolve, reject) => {
+        fs.readdir(dir, (err, files) => {
+            if (err) return reject(err);
+
+            files = files.filter((file) => {
+                return path.extname(file) === filter;
+            });
+
+            resolve(files);
+        });
+    });
+}
+
+/// <summary>
+/// Helps identify the engine
+/// </summary>
+function getEngineAttributes(engine) {
+    if (engine.includes("3dsMax"))
+        return {
+            commandLine:
+                '$(engine.path)\\3dsmaxbatch.exe -sceneFile "$(args[inputFile].path)" "$(settings[script].path)"',
+            extension: "max",
+            script: "da = dotNetClass('Autodesk.Forge.Sample.DesignAutomation.Max.RuntimeExecute')\nda.ModifyWindowWidthHeight()\n",
+        };
+    if (engine.includes("AutoCAD"))
+        return {
+            commandLine:
+                '$(engine.path)\\accoreconsole.exe /i "$(args[inputFile].path)" /al "$(appbundles[{0}].path)" /s "$(settings[script].path)"',
+            extension: "dwg",
+            script: "UpdateParam\n",
+        };
+    if (engine.includes("Inventor"))
+        return {
+            commandLine:
+                '$(engine.path)\\InventorCoreConsole.exe /i "$(args[inputFile].path)" /al "$(appbundles[{0}].path)"',
+            extension: "ipt",
+            script: "",
+        };
+    if (engine.includes("Revit"))
+        return {
+            commandLine:
+                '$(engine.path)\\revitcoreconsole.exe /i "$(args[inputFile].path)" /al "$(appbundles[{0}].path)"',
+            extension: "rvt",
+            script: "",
+        };
+
+    if (engine.includes("Fusion"))
+        return {
+            commandLine:
+                '',
+            extension: "f3d",
+            script: "",
+        };
+
+    throw new Error("Invalid engine");
+}
+
+function getFormDataLength(form) {
+    return new Promise((fulfill, reject) => {
+        form.getLength((err, length) => {
+            if (err) return reject(err);
+            fulfill(length);
+        });
+    });
+}
+
+/// <summary>
+/// Upload a file
+/// </summary>
+function uploadFormDataWithFile(filepath, endpoint, params = null) {
+    return new Promise(async (resolve, reject) => {
+        const fileStream = fs.createReadStream(filepath);
+
+        const form = new formdata();
+        if (params) {
+            const keys = Object.keys(params);
+            for (let i = 0; i < keys.length; i++)
+                form.append(keys[i], params[keys[i]]);
         }
-        return daInstance;
-    }
+        form.append("file", fileStream);
 
-    /// <summary>
-    /// Returns the directory where bindles are stored on the local machine.
-    /// </summary>
-    static get LocalBundlesFolder() {
-        return path.resolve(path.join(__dirname, "../", "bundles"));
-    }
+        let headers = form.getHeaders();
+        headers["Cache-Control"] = "no-cache";
+        headers["Content-Length"] = await getFormDataLength(form);
 
-    /// <summary>
-    /// Alias for the app (e.g. DEV, STG, PROD). This value may come from an environment variable
-    /// </summary>
-    static get Alias() {
-        return "dev";
-    }
-
-    /// <summary>
-    /// Search files in a folder and filter them.
-    /// </summary>
-    static async findFiles(dir, filter) {
-        return new Promise((resolve, reject) => {
-            fs.readdir(dir, (err, files) => {
-                if (err) return reject(err);
-
-                files = files.filter((file) => {
-                    return path.extname(file) === filter;
-                });
-
-                resolve(files);
-            });
-        });
-    }
-
-    /// <summary>
-    /// Create a new DA client/API with default settings
-    /// </summary>
-    static async getAPI() {
-        // There is 2 alternatives to setup an API instance, providing the access_token directly
-        // let apiClient2 = new DA.AutodeskForgeDesignAutomationClient(/*config.client*/);
-        // apiClient2.authManager.authentications['2-legged'].accessToken = oauth2.access_token;
-        //return (new DA.AutodeskForgeDesignAutomationApi(apiClient));
-
-        // Or use the Auto-Refresh feature
-        let apiClient = await Utils.Instance;
-        return new DA.AutodeskForgeDesignAutomationApi(apiClient);
-    }
-
-    /// <summary>
-    /// Helps identify the engine
-    /// </summary>
-    static getEngineAttributes(engine) {
-        if (engine.includes("3dsMax"))
-            return {
-                commandLine:
-                    '$(engine.path)\\3dsmaxbatch.exe -sceneFile "$(args[inputFile].path)" "$(settings[script].path)"',
-                extension: "max",
-                script: "da = dotNetClass('Autodesk.Forge.Sample.DesignAutomation.Max.RuntimeExecute')\nda.ModifyWindowWidthHeight()\n",
-            };
-        if (engine.includes("AutoCAD"))
-            return {
-                commandLine:
-                    '$(engine.path)\\accoreconsole.exe /i "$(args[inputFile].path)" /al "$(appbundles[{0}].path)" /s "$(settings[script].path)"',
-                extension: "dwg",
-                script: "UpdateParam\n",
-            };
-        if (engine.includes("Inventor"))
-            return {
-                commandLine:
-                    '$(engine.path)\\InventorCoreConsole.exe /i "$(args[inputFile].path)" /al "$(appbundles[{0}].path)"',
-                extension: "ipt",
-                script: "",
-            };
-        if (engine.includes("Revit"))
-            return {
-                commandLine:
-                    '$(engine.path)\\revitcoreconsole.exe /i "$(args[inputFile].path)" /al "$(appbundles[{0}].path)"',
-                extension: "rvt",
-                script: "",
-            };
-
-        if (engine.includes("Fusion"))
-            return {
-                commandLine:
-                    '',
-                extension: "f3d",
-                script: "",
-            };
-
-        throw new Error("Invalid engine");
-    }
-
-    static getFormDataLength(form) {
-        return new Promise((fulfill, reject) => {
-            form.getLength((err, length) => {
-                if (err) return reject(err);
-                fulfill(length);
-            });
-        });
-    }
-
-    /// <summary>
-    /// Upload a file
-    /// </summary>
-    static uploadFormDataWithFile(filepath, endpoint, params = null) {
-        return new Promise(async (resolve, reject) => {
-            const fileStream = fs.createReadStream(filepath);
-
-            const form = new formdata();
-            if (params) {
-                const keys = Object.keys(params);
-                for (let i = 0; i < keys.length; i++)
-                    form.append(keys[i], params[keys[i]]);
+        const urlinfo = url.parse(endpoint);
+        const postReq = http.request(
+            {
+                host: urlinfo.host,
+                port:
+                    urlinfo.port ||
+                    (urlinfo.protocol === "https:" ? 443 : 80),
+                path: urlinfo.pathname,
+                method: "POST",
+                headers: headers,
+            },
+            (response) => {
+                resolve(response.statusCode);
+            },
+            (err) => {
+                reject(err);
             }
-            form.append("file", fileStream);
+        );
 
-            let headers = form.getHeaders();
-            headers["Cache-Control"] = "no-cache";
-            headers["Content-Length"] = await Utils.getFormDataLength(form);
-
-            const urlinfo = url.parse(endpoint);
-            const postReq = http.request(
-                {
-                    host: urlinfo.host,
-                    port:
-                        urlinfo.port ||
-                        (urlinfo.protocol === "https:" ? 443 : 80),
-                    path: urlinfo.pathname,
-                    method: "POST",
-                    headers: headers,
-                },
-                (response) => {
-                    resolve(response.statusCode);
-                },
-                (err) => {
-                    reject(err);
-                }
-            );
-
-            form.pipe(postReq);
-        });
-    }
-
-    static async getObjectId(bucketKey, objectKey, file) {
-        try {
-            const { access_token } = await service.getInternalToken();
-            //uploadResources takes an Object or Object array of resource to uplaod with their parameters,
-            //we are just passing only one object.
-            let uploadResponse = await ossClient.uploadObject(bucketKey, objectKey, file.path, { accessToken: access_token });
-            //lets check for the first and only entry.
-            console.log(uploadResponse.objectId);
-            return uploadResponse.objectId;
-        } catch (err) {
-            console.error("Failed to create ObjectID\n", err);
-            throw err;
-        }
-    }
+        form.pipe(postReq);
+    });
 }
