@@ -9,7 +9,7 @@ if (!APS_CLIENT_ID || !APS_CLIENT_SECRET) {
 APS_NICKNAME = APS_NICKNAME || APS_CLIENT_ID;
 APS_BUCKET = APS_BUCKET || `${APS_NICKNAME.toLowerCase()}-designautomation`;
 APS_PAT = APS_PAT || '';
-APS_ALIAS = 'dev';
+const APS_ALIAS = 'dev';
 PORT = PORT || 8080;
 
 const APS_DA_CLIENT_CONFIG = {
