@@ -12,7 +12,7 @@ APS_PAT = APS_PAT || '';
 APS_ALIAS = 'dev';
 PORT = PORT || 8080;
 
-APS_DA_CLIENT_CONFIG = {
+const APS_DA_CLIENT_CONFIG = {
     circuitBreaker: {
         threshold: 11,
         interval: 1200,

@@ -74,7 +74,7 @@ service.getLocalAppBundles = async () => {
 
 service.getActivities = async () => {
     const api = await Utils.getAPI();
-    // filter list of
+
     let activities = null;
     try {
         activities = await api.getActivities();
@@ -179,6 +179,7 @@ service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
             PersonalAccessToken: APS_PAT,
         },
     };
+    console.log(JSON.stringify(workItemSpec, null, 2));
     let workItemStatus = null;
     try {
         const api = await Utils.getAPI();
