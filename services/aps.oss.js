@@ -2,8 +2,8 @@ const { SdkManagerBuilder } = require("@aps_sdk/autodesk-sdkmanager");
 
 const {
     OssClient,
-    CreateBucketsPayloadPolicyKeyEnum,
-    CreateBucketXAdsRegionEnum,
+    PolicyKey,
+    Region,
 } = require("@aps_sdk/oss");
 const {
     APS_BUCKET,
@@ -24,10 +24,12 @@ service.ensureBucketExists = async (bucketKey) => {
     } catch (err) {
         if (err.axiosError.response.status === 404) {
             await ossClient.createBucket(
-                CreateBucketXAdsRegionEnum.Us,
+                Region.Us,
                 {
                     bucketKey: bucketKey,
-                    policyKey: CreateBucketsPayloadPolicyKeyEnum.Transient,
+                    policyKey: PolicyKey.Transient,
+                },
+                {
                     accessToken: access_token,
                 }
             );
