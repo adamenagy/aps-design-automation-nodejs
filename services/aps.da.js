@@ -4,8 +4,7 @@ const {
     APS_DA_CLIENT_CONFIG,
     APS_NICKNAME,
     APS_ALIAS,
-    APS_BUCKET,
-    APS_PAT
+    APS_BUCKET
 } = require("../config.js");
 const {
     getInternalToken,
@@ -133,8 +132,7 @@ service.startWorkItem = async (activityName, widthParam, heigthParam, file) => {
         arguments: {
             inputFile: inputFileArgument,
             inputJson: inputJsonArgument,
-            outputFile: outputFileArgument,
-            PersonalAccessToken: APS_PAT,
+            outputFile: outputFileArgument
         },
     };
     console.log(JSON.stringify(workItemSpec, null, 2));
@@ -338,12 +336,6 @@ async function createActivity(engineName, zipFileName) {
                     verb: DA.Verb.put,
                     zip: false,
                 },
-                // Only Fusion needs this
-                PersonalAccessToken: {
-                    verb: DA.Verb.read,
-                    description: "the personal access token to use",
-                    required: true
-                },
             },
             settings: {
                 script: {
@@ -464,14 +456,6 @@ function getEngineAttributes(engine) {
             commandLine:
                 '$(engine.path)\\revitcoreconsole.exe /i "$(args[inputFile].path)" /al "$(appbundles[{0}].path)"',
             extension: "rvt",
-            script: "",
-        };
-
-    if (engine.includes("Fusion"))
-        return {
-            commandLine:
-                '',
-            extension: "f3d",
             script: "",
         };
 
